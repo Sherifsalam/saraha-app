@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import { encrypt } from "../../utils/security/encryption.js";
-import { Gender } from "../enums/user.enums.js";
+import { decrypt, encrypt } from "../../utils/security/encryption.js";
+import { Gender, ProviderEnum, RoleEnum } from "../enums/user.enums.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -19,7 +19,9 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function() {
+        return this.provider === ProviderEnum.SYSTEM;
+    },
       minlength: 8,
       maxlength: 150,
     },
@@ -32,6 +34,22 @@ const userSchema = new mongoose.Schema(
     age: {
       type: Number,
     },
+    phone:{
+      type: String,
+      set:function(value){
+        return encrypt(value)
+      },
+      get:function(value){
+        if(value){
+          return decrypt(value)
+        }
+      }
+    },
+    role: {
+        type: Number,
+        enum: Object.values(RoleEnum),
+        default: RoleEnum.user  
+    },
     IsEmailconfirmed: {
       type: Boolean,
       default: false,
@@ -40,6 +58,12 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    provider:{
+      type:Number,
+      enum:Object.values(ProviderEnum),
+      default: ProviderEnum.SYSTEM
+    }
+  
   },
   {
     timestamps: true,
