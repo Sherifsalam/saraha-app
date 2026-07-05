@@ -28,6 +28,7 @@ export const SignupService = async (
   gender,
   phone,
 ) => {
+  
   const IsEmailExist = await usermodel.findOne({ email });
   if (IsEmailExist) {
     throw BadrequestError("Email already exists");

@@ -16,7 +16,8 @@ import {
 } from "../../middleware/auth.middlewares.js";
 import { RoleEnum } from "../../DB/enums/user.enums.js";
 import joi from "joi";
-import { signupSchema } from "./auth.validation.js"; // ✅ fixed filename (was auth.validation.js)
+import { Validation } from "../../middleware/validation.middleware.js";
+import { LoginSchema, signupSchema } from "./auth.validation.js";
 
 const router = Router();
 
@@ -24,14 +25,8 @@ router.get("/", (req, res) => {
   res.json({ msg: "hello from the user module" });
 });
 
-router.post("/signup", async (req, res, next) => {
+router.post("/signup", Validation(signupSchema), async (req, res, next) => {
   try {
-    const { error } = signupSchema.validate(req.body, { abortEarly: false });
-
-    if (error) {
-      return next(BadrequestError(error.details[0].message)); // ✅ added next()
-    }
-
     const { firstName, lastName, email, password, gender, phone } = req.body;
     const { data } = await SignupService(
       firstName,
@@ -47,7 +42,7 @@ router.post("/signup", async (req, res, next) => {
   }
 });
 
-router.post("/login", async (req, res, next) => {
+router.post("/login", Validation(LoginSchema), async (req, res, next) => {
   try {
     const LoginSchema = joi.object({
       email: joi.string().email().required(),
@@ -57,7 +52,7 @@ router.post("/login", async (req, res, next) => {
     const { error } = LoginSchema.validate(req.body, { abortEarly: false });
 
     if (error) {
-      return next(BadrequestError(error.details[0].message)); // ✅ added next()
+      return next(BadrequestError(error.details[0].message));
     }
 
     const { email, password } = req.body;
@@ -68,12 +63,7 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
-router.get(
-  "/profile",
-  authMiddleware,
-  authorization([RoleEnum.admin, RoleEnum.user]),
-  profile,
-);
+router.get("/profile",authMiddleware,authorization([RoleEnum.admin, RoleEnum.user]),profile,);
 
 router.post("/refresh-token", refreshtoken);
 
