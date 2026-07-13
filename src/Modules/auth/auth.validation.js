@@ -18,7 +18,9 @@ export const signupSchema = {
  
 };
 
-export const LoginSchema= joi.object({
+export const LoginSchema = {
+  body: joi.object({
     email: joi.string().email().required(),
     password: joi.string().min(8).max(150).required(),
-})
+  }),
+};

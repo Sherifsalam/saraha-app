@@ -2,9 +2,13 @@ import { Router } from "express";
 import {
   SignupService,
   LoginService,
+  SendOtpService,
+  VerifyOtpService,
   profile,
   refreshtoken,
   socialLogin,
+  Logout,
+  LogoutFromAllDevices,
 } from "./auth.service.js";
 import {
   SuccessResponse,
@@ -15,7 +19,6 @@ import {
   authorization,
 } from "../../middleware/auth.middlewares.js";
 import { RoleEnum } from "../../DB/enums/user.enums.js";
-import joi from "joi";
 import { Validation } from "../../middleware/validation.middleware.js";
 import { LoginSchema, signupSchema } from "./auth.validation.js";
 
@@ -44,17 +47,6 @@ router.post("/signup", Validation(signupSchema), async (req, res, next) => {
 
 router.post("/login", Validation(LoginSchema), async (req, res, next) => {
   try {
-    const LoginSchema = joi.object({
-      email: joi.string().email().required(),
-      password: joi.string().min(8).max(150).required(),
-    });
-
-    const { error } = LoginSchema.validate(req.body, { abortEarly: false });
-
-    if (error) {
-      return next(BadrequestError(error.details[0].message));
-    }
-
     const { email, password } = req.body;
     const { data, message } = await LoginService(email, password);
     return SuccessResponse({ res, data, message, status: 200 });
@@ -63,10 +55,49 @@ router.post("/login", Validation(LoginSchema), async (req, res, next) => {
   }
 });
 
-router.get("/profile",authMiddleware,authorization([RoleEnum.admin, RoleEnum.user]),profile,);
+router.post("/send-otp", async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return next(BadrequestError("email is required"));
+    }
+
+    const { message, data } = await SendOtpService(email);
+    return SuccessResponse({ res, message, data, status: 200 });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/verify-otp", async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return next(BadrequestError("email and otp are required"));
+    }
+
+    const { message, data } = await VerifyOtpService(email, otp);
+    return SuccessResponse({ res, message, data, status: 200 });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get(
+  "/profile",
+  authMiddleware,
+  authorization([RoleEnum.admin, RoleEnum.user]),
+  profile,
+);
 
 router.post("/refresh-token", refreshtoken);
 
 router.post("/signup/gmail", socialLogin);
+
+router.post("/logout", authMiddleware, Logout);
+
+router.post( "/logout-all",authMiddleware,LogoutFromAllDevices);
 
 export default router;
