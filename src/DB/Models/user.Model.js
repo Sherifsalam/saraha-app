@@ -50,6 +50,13 @@ const userSchema = new mongoose.Schema(
         enum: Object.values(RoleEnum),
         default: RoleEnum.user  
     },
+    profile_picture:{
+      type:String
+    },
+    cover_picture:{
+      type:[String]
+
+    },
     IsEmailconfirmed: {
       type: Boolean,
       default: false,
