@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Verification</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #f4f4f7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  .card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 40px 32px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  @media (max-width: 480px) {
+    .card {
+      padding: 28px 20px;
+    }
+  }
+
+  h1 {
+    margin: 0 0 8px 0;
+    font-size: 22px;
+    color: #111827;
+  }
+
+  p {
+    margin: 0 0 24px 0;
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  p span {
+    font-weight: bold;
+    color: #111827;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #374151;
+    font-weight: bold;
+  }
+
+  input[type="email"],
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 15px;
+    margin-bottom: 16px;
+  }
+
+  input[type="text"] {
+    font-size: 22px;
+    letter-spacing: 8px;
+    text-align: center;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: #4f46e5;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    background-color: #4f46e5;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    background-color: #a5a6f0;
+    cursor: not-allowed;
+  }
+
+  .resend {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .resend a {
+    color: #4f46e5;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .message {
+    margin-top: 16px;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .message.error { color: #dc2626; }
+  .message.success { color: #16a34a; }
+
+  .step {
+    display: none;
+  }
+
+  .step.active {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+  <div class="card">
+
+    <!-- STEP 1: Enter email -->
+    <div id="step1" class="step active">
+      <h1>Verify Your Email</h1>
+      <p>Enter your email address and we'll send you a verification code.</p>
+
+      <form id="emailForm">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required>
+        <button type="submit" id="emailSubmitBtn">Send Verification Code</button>
+      </form>
+
+      <div id="emailMessage" class="message"></div>
+    </div>
+
+    <!-- STEP 2: Enter OTP -->
+    <div id="step2" class="step">
+      <h1>Enter Verification Code</h1>
+      <p>We sent a code to <span id="emailDisplay"></span></p>
+
+      <form id="otpForm">
+        <label for="otp">Verification Code</label>
+        <input type="text" id="otp" name="otp" placeholder="123456" maxlength="6" inputmode="numeric" required>
+        <button type="submit" id="otpSubmitBtn">Verify Code</button>
+      </form>
+
+      <div class="resend">
+        Didn't get a code? <a id="resendLink">Resend</a>
+      </div>
+
+      <div id="otpMessage" class="message"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const API_BASE_URL = "http://localhost:5200/api/v1/auth";
+
+    const step1 = document.getElementById("step1");
+    const step2 = document.getElementById("step2");
+
+    const emailForm = document.getElementById("emailForm");
+    const emailInput = document.getElementById("email");
+    const emailSubmitBtn = document.getElementById("emailSubmitBtn");
+    const emailMessage = document.getElementById("emailMessage");
+
+    const otpForm = document.getElementById("otpForm");
+    const otpInput = document.getElementById("otp");
+    const otpSubmitBtn = document.getElementById("otpSubmitBtn");
+    const otpMessage = document.getElementById("otpMessage");
+    const emailDisplay = document.getElementById("emailDisplay");
+    const resendLink = document.getElementById("resendLink");
+
+    let currentEmail = "";
+
+    function showStep(step) {
+      step1.classList.remove("active");
+      step2.classList.remove("active");
+      step.classList.add("active");
+    }
+
+    emailForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = emailInput.value.trim();
+      emailMessage.textContent = "";
+      emailMessage.className = "message";
+      emailSubmitBtn.disabled = true;
+      emailSubmitBtn.textContent = "Sending...";
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/send-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Something went wrong");
+        }
+
+        currentEmail = email;
+        emailDisplay.textContent = email;
+
+        emailMessage.textContent = "Code sent!";
+        emailMessage.classList.add("success");
+
+        setTimeout(() => {
+          showStep(step2);
+        }, 600);
+
+      } catch (err) {
+        emailMessage.textContent = err.message;
+        emailMessage.classList.add("error");
+      } finally {
+        emailSubmitBtn.disabled = false;
+        emailSubmitBtn.textContent = "Send Verification Code";
+      }
+    });
+
+    otpForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const otp = otpInput.value.trim();
+      otpMessage.textContent = "";
+      otpMessage.className = "message";
+      otpSubmitBtn.disabled = true;
+      otpSubmitBtn.textContent = "Verifying...";
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: currentEmail, otp }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Invalid code");
+        }
+
+        otpMessage.textContent = "Email verified successfully!";
+        otpMessage.classList.add("success");
+
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 1200);
+
+      } catch (err) {
+        otpMessage.textContent = err.message;
+        otpMessage.classList.add("error");
+      } finally {
+        otpSubmitBtn.disabled = false;
+        otpSubmitBtn.textContent = "Verify Code";
+      }
+    });
+
+    resendLink.addEventListener("click", async () => {
+      otpMessage.textContent = "";
+      otpMessage.className = "message";
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/send-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: currentEmail }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Could not resend code");
+        }
+
+        otpMessage.textContent = "A new code has been sent.";
+        otpMessage.classList.add("success");
+
+      } catch (err) {
+        otpMessage.textContent = err.message;
+        otpMessage.classList.add("error");
+      }
+    });
+  </script>
+
+</body>
+</html>
